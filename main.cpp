@@ -15,7 +15,7 @@ class Characters {
     std::string name;
     int savedAddress; 
     char charClass;                     //(1 byte) (0 = fighter, 1 = mage, 2 = priest, 3 = thief, 4 = bishop, 5 = samurai, 6 = lord, 7 = ninja)
-    char* stats = new char[4];          //(4 byte) (9 e 25 = 0, str = 4-8, iq = 15-16 + 1-3, piety = 10-14, vitality = 20-24, agility = 31-32 + 17-19, luck = 26-30)
+    int* stats = new int[6];            //(4 byte) (9 e 25 = 0, str = 4-8, iq = 15-16 + 1-3, piety = 10-14, vitality = 20-24, agility = 31-32 + 17-19, luck = 26-30)
     char* equip = new char[9];          //(2 + 8*8 byte ma 7 inutilizzati per pezzo di equip) (quantità di cose, 0, 8* (hex) 000000000100xx00 dove xx è l'id del pezzo di equipaggiamento)
     char* gold = new char[5];           //(5 byte) (byte1: 1-4 *16, 5-8 *1, byte2: 1-4 *4096, 5-8 *256, byte3: 1-4 *160000, 5-8 *10000, byte4: 1-4 *40960000, 5-8 *2560000, byte5: 1-4 *1600000000, 5-8 *100000000)
     char* exp = new char[5];            //vedi sopra
@@ -69,8 +69,30 @@ public:
 
     void getStats(char* disk)
     {
-        for(int i = 0; i < 4; i++)
-            this->stats[i] = disk[this->savedAddress + STATSOFFSET + i];
+        std::string statsBin = "00000000000000000000000000000000";
+        char masks[] = {(char)0b0000'0001,
+                        (char)0b0000'0010,
+                        (char)0b0000'0100,
+                        (char)0b0000'1000,
+                        (char)0b0001'0000,
+                        (char)0b0010'0000,
+                        (char)0b0100'0000,
+                        (char)0b1000'0000};
+
+        int contatore = 0;
+        for(int i = 0; i < 4 && contatore < 32; i++) {
+            for(int j = 0; j < 8 && contatore < 32; j++) {
+                statsBin[contatore] = disk[this->savedAddress + STATSOFFSET + i] & masks[j];
+                contatore++;
+            }
+        }
+
+        stats[0] = statsBin[3]  << 4 | statsBin[4]  << 3 | statsBin[5]  << 2 | statsBin[6]  << 1 | statsBin[7];
+        stats[1] = statsBin[14] << 4 | statsBin[15] << 3 | statsBin[0]  << 2 | statsBin[1]  << 1 | statsBin[2];
+        stats[2] = statsBin[9]  << 4 | statsBin[10] << 3 | statsBin[11] << 2 | statsBin[12] << 1 | statsBin[13];
+        stats[3] = statsBin[19] << 4 | statsBin[20] << 3 | statsBin[21] << 2 | statsBin[22] << 1 | statsBin[23];
+        stats[4] = statsBin[30] << 4 | statsBin[31] << 3 | statsBin[16] << 2 | statsBin[17] << 1 | statsBin[18];
+        stats[5] = statsBin[25] << 4 | statsBin[26] << 3 | statsBin[27] << 2 | statsBin[28] << 1 | statsBin[29];
     }
 
 //interpretatori
@@ -95,17 +117,14 @@ public:
 
     void printStats()
     {
-        char* buf = new char[8];
-        char str, iq, piet, vit, agi, luc;
+        using namespace std;
 
-        for(int i = 0; i < 4; i++) {
-            buf[i] = (this->stats[i] & 0xF0 >> 4);
-            buf[i * 2] = (this->stats[i] & 0x0F);
-        }
-
-        str = ((buf[1] & 0b0000'0001) << 4) | (buf[2] & 0xF0);
-        std::cout << (int)str << std::endl;
-        printCharAsBinary(str);
+        cout << "strength: " << stats[0] << endl
+             << "iq: " << stats[1] << endl
+             << "piety: " << stats[2] << endl
+             << "vitality: " << stats[3] << endl
+             << "agility: " << stats[4] << endl
+             << "luck: " << stats[5] << endl;
     }
 };
 
@@ -135,6 +154,7 @@ int main()
     list[0].printStats();
 
 	delete[] disk;
+    delete[] list;
 	return 0;
 }
 
