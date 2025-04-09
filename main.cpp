@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iomanip>
 
 #define CLASSOFFSET 0x24
 #define STATSOFFSET 0x2C
@@ -10,6 +11,9 @@
 
 int getNumberFromUser();
 void printCharAsBinary(char c);
+
+
+char* disk;
 
 class Characters {
     std::string name;
@@ -26,7 +30,7 @@ public:
     tutta la cli
 
     getter e setter di:
-        statistiche s
+        statistiche gs
         equip   gs
         gold    gs
         exp     gs
@@ -34,7 +38,7 @@ public:
     rigoroso testing
 */
 
-    void seekAddress(char* disk, size_t size)
+    void seekAddress(size_t size)
     {
         size_t i;
         bool found = false;
@@ -57,42 +61,38 @@ public:
         this->name = toSet;
     }
 
-    void getClass(char* disk)
+    void getClass()
     {
         this->charClass = disk[this->savedAddress + CLASSOFFSET];
     }
 
-    void setClass(char* disk, char toSet)
+    void setClass(char toSet)
     {
         disk[this->savedAddress + CLASSOFFSET] = toSet;
     }
 
-    void getStats(char* disk)
+    void getStats()
     {
-        std::string statsBin = "00000000000000000000000000000000";
-        char masks[] = {(char)0b0000'0001,
-                        (char)0b0000'0010,
-                        (char)0b0000'0100,
-                        (char)0b0000'1000,
-                        (char)0b0001'0000,
-                        (char)0b0010'0000,
-                        (char)0b0100'0000,
-                        (char)0b1000'0000};
+        int buf = disk[this->savedAddress + STATSOFFSET] << 24 |
+                  disk[this->savedAddress + STATSOFFSET + 1] << 16 |
+                  disk[this->savedAddress + STATSOFFSET + 2] << 8 |
+                  disk[this->savedAddress + STATSOFFSET + 3];
+        
+        int masks[] = {(int) 0b00011111'00000000'00000000'00000000,  //strength
+                       (int) 0b00000000'01111100'00000000'00000000,  //piety
+                       (int) 0b00000000'00000000'00011111'00000000,  //vitality
+                       (int) 0b00000000'00000000'00000000'01111100,  //luck
+                       (int) 0b11100000'00000000'00000000'00000000,  //iq pt1
+                       (int) 0b00000000'00000011'00000000'00000000,  //iq pt2
+                       (int) 0b00000000'00000000'11100000'00000000,  //agility pt1
+                       (int) 0b00000000'00000000'00000000'00000011}; //agility pt2
 
-        int contatore = 0;
-        for(int i = 0; i < 4 && contatore < 32; i++) {
-            for(int j = 0; j < 8 && contatore < 32; j++) {
-                statsBin[contatore] = disk[this->savedAddress + STATSOFFSET + i] & masks[j];
-                contatore++;
-            }
-        }
-
-        stats[0] = statsBin[3]  << 4 | statsBin[4]  << 3 | statsBin[5]  << 2 | statsBin[6]  << 1 | statsBin[7];
-        stats[1] = statsBin[14] << 4 | statsBin[15] << 3 | statsBin[0]  << 2 | statsBin[1]  << 1 | statsBin[2];
-        stats[2] = statsBin[9]  << 4 | statsBin[10] << 3 | statsBin[11] << 2 | statsBin[12] << 1 | statsBin[13];
-        stats[3] = statsBin[19] << 4 | statsBin[20] << 3 | statsBin[21] << 2 | statsBin[22] << 1 | statsBin[23];
-        stats[4] = statsBin[30] << 4 | statsBin[31] << 3 | statsBin[16] << 2 | statsBin[17] << 1 | statsBin[18];
-        stats[5] = statsBin[25] << 4 | statsBin[26] << 3 | statsBin[27] << 2 | statsBin[28] << 1 | statsBin[29];
+        stats[0] = (buf & masks[0]) >> 24;
+        stats[1] = (buf & masks[4]) >> 21 | (buf & masks[5]) >> 13;
+        stats[2] = (buf & masks[1]) >> 18;
+        stats[3] = (buf & masks[2]) >> 8;
+        stats[4] = (buf & masks[6]) >> 13 | (buf & masks[7]) << 3;
+        stats[5] = (buf & masks[3]) >> 2;
     }
 
 //interpretatori
@@ -102,16 +102,16 @@ public:
 
         switch(this->charClass)
         {
-            case 0: cout << "\n fighter \n"; break;
-            case 1: cout << "\n mage \n"; break;
-            case 2: cout << "\n priest \n"; break;
-            case 3: cout << "\n thief \n"; break;
-            case 4: cout << "\n bishop \n"; break;
-            case 5: cout << "\n samurai \n"; break;
-            case 6: cout << "\n lord \n"; break;
-            case 7: cout << "\n ninja \n"; break;
+            case 0: cout << "\n" << "fighter\n";  break;
+            case 1: cout << "\n" << "mage   \n";  break;
+            case 2: cout << "\n" << "priest \n";  break;
+            case 3: cout << "\n" << "thief  \n";  break;
+            case 4: cout << "\n" << "bishop \n";  break;
+            case 5: cout << "\n" << "samurai\n";  break;
+            case 6: cout << "\n" << "lord   \n";  break;
+            case 7: cout << "\n" << "ninja  \n";  break;
 
-            default: cout << "\n error \n"; break;
+            default: cerr << "\n error \n"; break;
         }
     }
 
@@ -141,16 +141,16 @@ int main()
 	size = ifs.tellg();
 	ifs.seekg(0, std::ios::beg);
 	
-	char *disk = new char[size];
+	disk = new char[size];
 	
 	ifs.read(disk, size);
 	ifs.close();
 
     list[0].setName("SARA");
-    list[0].seekAddress(disk, size);
-    list[0].getClass(disk);
+    list[0].seekAddress(size);
+    list[0].getClass();
     list[0].printClass();
-    list[0].getStats(disk);
+    list[0].getStats();
     list[0].printStats();
 
 	delete[] disk;
