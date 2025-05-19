@@ -32,8 +32,8 @@ class Characters {
 
     getter e setter di:
         equip   gs
-        gold    gs
-        exp     gs
+        gold    s
+        exp     s
 
     rigoroso testing
 */
@@ -56,7 +56,7 @@ public:
         this->savedAddress = i - 2;
     }
 
-//getter e setter
+//nome
     void setName(std::string toSet)
     {
         this->name = toSet;
@@ -197,10 +197,7 @@ public:
             gold == resultTemp;
     }
 
-    void serializeExpOrGold()
-    {
-
-    }
+    void serializeExpOrGold();
 
 //sezione di stampa
     void printClass()
